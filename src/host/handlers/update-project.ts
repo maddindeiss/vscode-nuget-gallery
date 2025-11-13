@@ -39,41 +39,67 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
       document
     ) as Node[];
 
-    if (existingRefs.length === 0) {
-      // Package doesn't exist - add PackageReference without version to project file
+    const packageExists = existingRefs.length > 0;
+
+    if (!packageExists) {
+      // For new packages, we need to add the version to Directory.Packages.props first
+      // before adding the PackageReference to avoid NU1008 error
+      const propsPath = DirectoryPackagesParser.FindDirectoryPackagesProps(request.ProjectPath);
+      if (propsPath) {
+        DirectoryPackagesParser.UpdatePackageVersion(
+          request.ProjectPath,
+          request.PackageId,
+          request.Version!
+        );
+      }
+      
+      // Then add PackageReference without version to project file
       this.AddPackageReferenceWithoutVersion(request.ProjectPath, request.PackageId);
+      
+      // For new packages, run restore to make the package available
+      if (!skipRestore) {
+        let restoreArgs: Array<string> = ["restore", request.ProjectPath.replace(/\\/g, "/")];
+        let restoreTask = new vscode.Task(
+          { type: "dotnet", task: `dotnet restore` },
+          vscode.TaskScope.Workspace,
+          "nuget-gallery",
+          "dotnet",
+          new vscode.ShellExecution("dotnet", restoreArgs)
+        );
+        restoreTask.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
+        await TaskExecutor.ExecuteTask(restoreTask);
+      }
+    } else {
+      // For existing packages, use dotnet package update to update the version
+      let args: Array<string> = [
+        "package", 
+        "update", 
+        request.PackageId,
+        "--project",
+        request.ProjectPath.replace(/\\/g, "/")
+      ];
+
+      // Specify the version if provided
+      if (request.Version) {
+        args.push("--version");
+        args.push(request.Version);
+      }
+
+      if (skipRestore) {
+        args.push("--no-restore");
+      }
+
+      let task = new vscode.Task(
+        { type: "dotnet", task: `dotnet package update` },
+        vscode.TaskScope.Workspace,
+        "nuget-gallery",
+        "dotnet",
+        new vscode.ShellExecution("dotnet", args)
+      );
+      task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
+
+      await TaskExecutor.ExecuteTask(task);
     }
-
-    // Use dotnet package update to update the version in Directory.Packages.props
-    // This command automatically handles CPM and updates the central file
-    let args: Array<string> = [
-      "package", 
-      "update", 
-      request.PackageId,
-      "--project",
-      request.ProjectPath.replace(/\\/g, "/")
-    ];
-
-    // Specify the version if provided
-    if (request.Version) {
-      args.push("--version");
-      args.push(request.Version);
-    }
-
-    if (skipRestore) {
-      args.push("--no-restore");
-    }
-
-    let task = new vscode.Task(
-      { type: "dotnet", task: `dotnet package update` },
-      vscode.TaskScope.Workspace,
-      "nuget-gallery",
-      "dotnet",
-      new vscode.ShellExecution("dotnet", args)
-    );
-    task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
-
-    await TaskExecutor.ExecuteTask(task);
   }
 
   private async HandleStandardPackageUpdate(request: UpdateProjectRequest, skipRestore: string): Promise<void> {
