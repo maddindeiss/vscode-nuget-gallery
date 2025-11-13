@@ -2,6 +2,7 @@ import fs from "fs";
 import { DOMParser } from "@xmldom/xmldom";
 import xpath from "xpath";
 import * as path from "path";
+import DirectoryPackagesParser from "./directory-packages-parser";
 
 export default class ProjectParser {
   static Parse(projectPath: string): Project {
@@ -23,7 +24,14 @@ export default class ProjectParser {
       } else {
         version = xpath.select("string(Version)", p);
         if (!version) {
-          version = null;
+          // Try to get version from Directory.Packages.props if using Central Package Management
+          const packageId = p.attributes?.getNamedItem("Include")?.value;
+          if (packageId) {
+            const centralVersion = DirectoryPackagesParser.GetPackageVersion(projectPath, packageId);
+            version = centralVersion || null;
+          } else {
+            version = null;
+          }
         }
       }
       let projectPackage: ProjectPackage = {

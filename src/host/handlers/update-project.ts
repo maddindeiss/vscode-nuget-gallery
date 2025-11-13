@@ -2,13 +2,18 @@ import { IRequestHandler } from "@/common/messaging/core/types";
 import * as vscode from "vscode";
 import ProjectParser from "../utilities/project-parser";
 import TaskExecutor from "../utilities/task-executor";
+import DirectoryPackagesParser from "../utilities/directory-packages-parser";
 
 export default class UpdateProject implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse> {
   async HandleAsync(request: UpdateProjectRequest): Promise<UpdateProjectResponse> {
     let skipRestore = vscode.workspace.getConfiguration("NugetGallery").get<string>("skipRestore") ?? "";
     let command = request.Type == "UNINSTALL" ? "remove" : "add";
     let args: Array<string> = [command, request.ProjectPath.replace(/\\/g, "/"), "package", request.PackageId];
+    
     if (request.Type !== "UNINSTALL") {
+      // When using Central Package Management, dotnet add package with -v flag
+      // will automatically update Directory.Packages.props
+      // This works for both CPM and non-CPM scenarios
       args.push("-v");
       args.push(request.Version!);
       if (skipRestore) args.push("--no-restore");
