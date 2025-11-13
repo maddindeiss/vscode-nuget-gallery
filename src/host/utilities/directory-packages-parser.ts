@@ -1,5 +1,5 @@
 import fs from "fs";
-import { DOMParser } from "@xmldom/xmldom";
+import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import xpath from "xpath";
 import * as path from "path";
 
@@ -108,6 +108,92 @@ export default class DirectoryPackagesParser {
       
       return !!manageCentrally && manageCentrally.toLowerCase() === "true";
     } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Updates or adds a package version in Directory.Packages.props
+   */
+  static UpdatePackageVersion(projectPath: string, packageId: string, version: string): boolean {
+    const propsPath = this.FindDirectoryPackagesProps(projectPath);
+    if (!propsPath) {
+      return false;
+    }
+
+    try {
+      const propsContent = fs.readFileSync(propsPath, "utf8");
+      const document = new DOMParser().parseFromString(propsContent);
+      if (!document) {
+        return false;
+      }
+
+      // Find existing PackageVersion node for this package
+      const packageVersionNodes = xpath.select(
+        `//ItemGroup/PackageVersion[@Include='${packageId}']`,
+        document
+      ) as Node[];
+
+      if (packageVersionNodes.length > 0) {
+        // Update existing package version
+        const node = packageVersionNodes[0] as any;
+        const versionAttr = node.attributes?.getNamedItem("Version");
+        if (versionAttr) {
+          versionAttr.value = version;
+        } else {
+          // Add Version attribute if it doesn't exist
+          node.setAttribute("Version", version);
+        }
+      } else {
+        // Add new PackageVersion entry
+        // Find or create an ItemGroup
+        let itemGroups = xpath.select("//ItemGroup", document) as Node[];
+        let itemGroup: any;
+        
+        if (itemGroups.length > 0) {
+          // Use the first ItemGroup that contains PackageVersion elements
+          for (const ig of itemGroups) {
+            const pvNodes = xpath.select("PackageVersion", ig) as Node[];
+            if (pvNodes.length > 0) {
+              itemGroup = ig;
+              break;
+            }
+          }
+          // If no ItemGroup with PackageVersion, use the first one
+          if (!itemGroup) {
+            itemGroup = itemGroups[0];
+          }
+        } else {
+          // Create new ItemGroup
+          const projectNode = xpath.select("/Project", document)[0];
+          if (!projectNode) {
+            return false;
+          }
+          itemGroup = document.createElement("ItemGroup");
+          projectNode.appendChild(document.createTextNode("\n  "));
+          projectNode.appendChild(itemGroup);
+          projectNode.appendChild(document.createTextNode("\n"));
+        }
+
+        // Create new PackageVersion element
+        const newPackageVersion = document.createElement("PackageVersion");
+        newPackageVersion.setAttribute("Include", packageId);
+        newPackageVersion.setAttribute("Version", version);
+        
+        // Add with proper indentation
+        itemGroup.appendChild(document.createTextNode("\n    "));
+        itemGroup.appendChild(newPackageVersion);
+        itemGroup.appendChild(document.createTextNode("\n  "));
+      }
+
+      // Serialize and write back
+      const serializer = new XMLSerializer();
+      const updatedContent = serializer.serializeToString(document);
+      fs.writeFileSync(propsPath, updatedContent, "utf8");
+
+      return true;
+    } catch (error) {
+      console.error(`Error updating Directory.Packages.props: ${error}`);
       return false;
     }
   }
