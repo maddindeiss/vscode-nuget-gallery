@@ -15,7 +15,7 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     const isCPMEnabled = DirectoryPackagesParser.IsCentralPackageManagementEnabled(request.ProjectPath);
     
     if (isCPMEnabled && request.Type === "INSTALL") {
-      // For CPM projects, handle install/update differently
+      // For CPM projects, use dotnet package update which handles CPM correctly
       await this.HandleCPMPackageUpdate(request, skipRestore);
     } else {
       // For non-CPM projects or uninstall, use the standard dotnet command
@@ -30,18 +30,7 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
   }
 
   private async HandleCPMPackageUpdate(request: UpdateProjectRequest, skipRestore: string): Promise<void> {
-    // Step 1: Update Directory.Packages.props with the new version
-    const updated = DirectoryPackagesParser.UpdatePackageVersion(
-      request.ProjectPath,
-      request.PackageId,
-      request.Version!
-    );
-
-    if (!updated) {
-      throw new Error(`Failed to update Directory.Packages.props for package ${request.PackageId}`);
-    }
-
-    // Step 2: Check if PackageReference exists in project file
+    // Check if PackageReference exists in project file
     const projectContent = fs.readFileSync(request.ProjectPath, "utf8");
     const document = new DOMParser().parseFromString(projectContent);
     
@@ -51,26 +40,40 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     ) as Node[];
 
     if (existingRefs.length === 0) {
-      // Step 3: If PackageReference doesn't exist, add it WITHOUT version
+      // Package doesn't exist - add PackageReference without version to project file
       this.AddPackageReferenceWithoutVersion(request.ProjectPath, request.PackageId);
-    } else {
-      // Step 4: If PackageReference exists, ensure it has NO version attribute
-      this.RemoveVersionFromPackageReference(request.ProjectPath, request.PackageId);
     }
 
-    // Step 5: Run dotnet restore if needed
-    if (!skipRestore) {
-      let args: Array<string> = ["restore", request.ProjectPath.replace(/\\/g, "/")];
-      let task = new vscode.Task(
-        { type: "dotnet", task: `dotnet restore` },
-        vscode.TaskScope.Workspace,
-        "nuget-gallery",
-        "dotnet",
-        new vscode.ShellExecution("dotnet", args)
-      );
-      task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
-      await TaskExecutor.ExecuteTask(task);
+    // Use dotnet package update to update the version in Directory.Packages.props
+    // This command automatically handles CPM and updates the central file
+    let args: Array<string> = [
+      "package", 
+      "update", 
+      request.PackageId,
+      "--project",
+      request.ProjectPath.replace(/\\/g, "/")
+    ];
+
+    // Specify the version if provided
+    if (request.Version) {
+      args.push("--version");
+      args.push(request.Version);
     }
+
+    if (skipRestore) {
+      args.push("--no-restore");
+    }
+
+    let task = new vscode.Task(
+      { type: "dotnet", task: `dotnet package update` },
+      vscode.TaskScope.Workspace,
+      "nuget-gallery",
+      "dotnet",
+      new vscode.ShellExecution("dotnet", args)
+    );
+    task.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
+
+    await TaskExecutor.ExecuteTask(task);
   }
 
   private async HandleStandardPackageUpdate(request: UpdateProjectRequest, skipRestore: string): Promise<void> {
@@ -141,30 +144,5 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     const serializer = new XMLSerializer();
     const updatedContent = serializer.serializeToString(document);
     fs.writeFileSync(projectPath, updatedContent, "utf8");
-  }
-
-  private RemoveVersionFromPackageReference(projectPath: string, packageId: string): void {
-    const projectContent = fs.readFileSync(projectPath, "utf8");
-    const document = new DOMParser().parseFromString(projectContent);
-    
-    const packageRefs = xpath.select(
-      `//ItemGroup/PackageReference[@Include='${packageId}']`,
-      document
-    ) as Node[];
-
-    let modified = false;
-    packageRefs.forEach((node: any) => {
-      const versionAttr = node.attributes?.getNamedItem("Version");
-      if (versionAttr) {
-        node.removeAttribute("Version");
-        modified = true;
-      }
-    });
-
-    if (modified) {
-      const serializer = new XMLSerializer();
-      const updatedContent = serializer.serializeToString(document);
-      fs.writeFileSync(projectPath, updatedContent, "utf8");
-    }
   }
 }
