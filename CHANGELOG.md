@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extension now reads package versions from Directory.Packages.props when packages don't have versions specified in project files
   - Automatically detects when CPM is enabled via ManagePackageVersionsCentrally property
   - Compatible with both CPM and non-CPM projects
+  - **Note:** Requires .NET 10 SDK or higher for package update operations (uses `dotnet package update` command)
 
 ## [1.2.4]
 

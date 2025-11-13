@@ -23,6 +23,8 @@ Full support for [Central Package Management (CPM)](https://learn.microsoft.com/
 - Detects when CPM is enabled via the `ManagePackageVersionsCentrally` property
 - Works seamlessly with both CPM and traditional package management approaches
 
+> **Note:** CPM package updates require [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or higher due to the `dotnet package update` command. The CPM feature itself (reading versions) works with .NET 6.0+ SDKs.
+
 ### 🚀 Source Management
 
 Manage your NuGet package sources effortlessly. Add, remove, or modify package sources to suit your project requirements.
