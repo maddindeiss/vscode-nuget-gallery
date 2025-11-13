@@ -16,6 +16,13 @@ Effortlessly install, update, and uninstall NuGet packages for your projects dir
     <img width="1200" src="docs/images/feature_1.gif"> 
 </p>
 
+### 🎯 Central Package Management Support
+
+Full support for [Central Package Management (CPM)](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management) using `Directory.Packages.props`. The extension automatically:
+- Reads package versions from `Directory.Packages.props` when packages don't have versions in project files
+- Detects when CPM is enabled via the `ManagePackageVersionsCentrally` property
+- Works seamlessly with both CPM and traditional package management approaches
+
 ### 🚀 Source Management
 
 Manage your NuGet package sources effortlessly. Add, remove, or modify package sources to suit your project requirements.

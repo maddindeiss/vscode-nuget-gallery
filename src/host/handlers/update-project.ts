@@ -2,7 +2,6 @@ import { IRequestHandler } from "@/common/messaging/core/types";
 import * as vscode from "vscode";
 import ProjectParser from "../utilities/project-parser";
 import TaskExecutor from "../utilities/task-executor";
-import DirectoryPackagesParser from "../utilities/directory-packages-parser";
 
 export default class UpdateProject implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse> {
   async HandleAsync(request: UpdateProjectRequest): Promise<UpdateProjectResponse> {
