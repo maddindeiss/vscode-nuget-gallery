@@ -161,6 +161,17 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     const newPackageRef = document.createElement("PackageReference");
     newPackageRef.setAttribute("Include", packageId);
     
+    // Check if ItemGroup has existing children
+    const hasExistingChildren = itemGroup.childNodes.length > 0;
+    
+    if (hasExistingChildren) {
+      // Remove trailing whitespace from ItemGroup before adding new element
+      const lastChild = itemGroup.lastChild;
+      if (lastChild && lastChild.nodeType === 3 && /^\s+$/.test(lastChild.nodeValue)) {
+        itemGroup.removeChild(lastChild);
+      }
+    }
+    
     // Add with proper indentation
     itemGroup.appendChild(document.createTextNode("\n    "));
     itemGroup.appendChild(newPackageRef);
