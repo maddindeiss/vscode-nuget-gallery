@@ -30,9 +30,9 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
         args.push("--version");
         args.push(request.Version);
       }
-      // When CPM is enabled, always use --no-restore to prevent adding version to csproj
-      // As mentioned in the issue, using --no-restore prevents version from being added to csproj with CPM
-      if (skipRestore || isCpmEnabled) {
+      // Only use --no-restore if skipRestore is enabled AND CPM is NOT enabled
+      // When CPM is enabled, --no-restore causes a bug where version is added to csproj
+      if (skipRestore && !isCpmEnabled) {
         args.push("--no-restore");
       }
     }
@@ -71,7 +71,8 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
           addArgs.push("--version");
           addArgs.push(request.Version);
         }
-        if (skipRestore || isCpmEnabled) {
+        // Same logic: don't use --no-restore with CPM
+        if (skipRestore && !isCpmEnabled) {
           addArgs.push("--no-restore");
         }
         const addTask = new vscode.Task(
