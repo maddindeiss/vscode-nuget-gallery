@@ -119,9 +119,16 @@ export class ProjectRow extends FASTElement {
     return projectPackage;
   }
 
-  async Update(type: "INSTALL" | "UNINSTALL") {
+  async Update(type: "INSTALL" | "UNINSTALL" | "UPDATE") {
+    // Determine the actual operation type
+    let operationType = type;
+    if (type === "INSTALL" && this.ProjectPackage !== undefined) {
+      // If package is already installed, use UPDATE instead of INSTALL
+      operationType = "UPDATE";
+    }
+    
     let request: UpdateProjectRequest = {
-      Type: type,
+      Type: operationType,
       ProjectPath: this.project.Path,
       PackageId: this.packageId,
       Version: this.packageVersion,
