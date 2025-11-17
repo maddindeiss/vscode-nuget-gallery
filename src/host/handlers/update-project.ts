@@ -10,8 +10,8 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
     const isCpmEnabled = CentralPackageManager.IsCentralPackageManagementEnabled(request.ProjectPath);
     
     if (request.Type === "UNINSTALL") {
-      // .NET 10 format: dotnet package remove <PACKAGE_ID> <PROJECT>
-      const args = ["package", "remove", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+      // .NET 10 format: dotnet package remove <PACKAGE_ID> --project <PROJECT>
+      const args = ["package", "remove", request.PackageId, "--project", request.ProjectPath.replace(/\\/g, "/")];
       const task = new vscode.Task(
         { type: "dotnet", task: `dotnet package remove` },
         vscode.TaskScope.Workspace,
@@ -26,7 +26,7 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
       // This is more reliable than `dotnet package update` which may not support downgrades
       
       // First remove the package using .NET 10 format
-      const removeArgs = ["package", "remove", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+      const removeArgs = ["package", "remove", request.PackageId, "--project", request.ProjectPath.replace(/\\/g, "/")];
       const removeTask = new vscode.Task(
         { type: "dotnet", task: `dotnet package remove` },
         vscode.TaskScope.Workspace,
@@ -38,7 +38,7 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
       await TaskExecutor.ExecuteTask(removeTask);
       
       // Then add it back with new version using .NET 10 format
-      const addArgs = ["package", "add", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+      const addArgs = ["package", "add", request.PackageId, "--project", request.ProjectPath.replace(/\\/g, "/")];
       if (request.Version) {
         addArgs.push("--version");
         addArgs.push(request.Version);
@@ -57,8 +57,8 @@ export default class UpdateProject implements IRequestHandler<UpdateProjectReque
       addTask.presentationOptions.reveal = vscode.TaskRevealKind.Silent;
       await TaskExecutor.ExecuteTask(addTask);
     } else {
-      // INSTALL: .NET 10 format: dotnet package add <PACKAGE_ID> <PROJECT> --version <VERSION>
-      const args = ["package", "add", request.PackageId, request.ProjectPath.replace(/\\/g, "/")];
+      // INSTALL: .NET 10 format: dotnet package add <PACKAGE_ID> --project <PROJECT> --version <VERSION>
+      const args = ["package", "add", request.PackageId, "--project", request.ProjectPath.replace(/\\/g, "/")];
       if (request.Version) {
         args.push("--version");
         args.push(request.Version);
