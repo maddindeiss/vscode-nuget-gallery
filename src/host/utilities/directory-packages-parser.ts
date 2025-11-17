@@ -165,7 +165,8 @@ export default class DirectoryPackagesParser {
           }
         } else {
           // Create new ItemGroup
-          const projectNode = xpath.select("/Project", document)[0];
+          const projectNodes = xpath.select("/Project", document) as Node[];
+          const projectNode = projectNodes[0];
           if (!projectNode) {
             return false;
           }
