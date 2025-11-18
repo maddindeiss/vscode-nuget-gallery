@@ -6,7 +6,7 @@ import CentralPackageManager from "../utilities/central-package-manager";
 
 export default class UpdateProject implements IRequestHandler<UpdateProjectRequest, UpdateProjectResponse> {
   async HandleAsync(request: UpdateProjectRequest): Promise<UpdateProjectResponse> {
-    let skipRestore = vscode.workspace.getConfiguration("NugetGallery").get<string>("skipRestore") ?? "";
+    let skipRestore = vscode.workspace.getConfiguration("NugetGallery").get<boolean>("skipRestore") ?? false;
     const isCpmEnabled = CentralPackageManager.IsCentralPackageManagementEnabled(request.ProjectPath);
     
     if (request.Type === "UNINSTALL") {

@@ -119,6 +119,12 @@ export class ProjectRow extends FASTElement {
     return projectPackage;
   }
 
+  /**
+   * Updates a project by installing, uninstalling, or updating a package.
+   * @param type - The operation type. When type is "INSTALL" and the package is already installed,
+   *               it will be automatically converted to "UPDATE" to modify the existing package version.
+   * This method emits a "project-updated" event after the operation completes.
+   */
   async Update(type: "INSTALL" | "UNINSTALL" | "UPDATE") {
     // Determine the actual operation type
     let operationType = type;
