@@ -2,6 +2,7 @@ import fs from "fs";
 import { DOMParser } from "@xmldom/xmldom";
 import xpath from "xpath";
 import * as path from "path";
+import CentralPackageManager from "./central-package-manager";
 
 export default class ProjectParser {
   static Parse(projectPath: string): Project {
@@ -16,7 +17,13 @@ export default class ProjectParser {
       Packages: Array(),
     };
 
+    // Check if Central Package Management is enabled
+    const isCpmEnabled = CentralPackageManager.IsCentralPackageManagementEnabled(projectPath);
+    const propsPath = isCpmEnabled ? CentralPackageManager.FindDirectoryPackagesProps(projectPath) : null;
+    const centralVersions = propsPath ? CentralPackageManager.ParsePackageVersions(propsPath) : null;
+
     (packagesReferences || []).forEach((p: any) => {
+      const packageId = p.attributes?.getNamedItem("Include").value;
       let version = p.attributes?.getNamedItem("Version");
       if (version) {
         version = version.value;
@@ -26,8 +33,14 @@ export default class ProjectParser {
           version = null;
         }
       }
+      
+      // If version is not in csproj but CPM is enabled, get it from Directory.Packages.props
+      if (!version && centralVersions && packageId) {
+        version = centralVersions.get(packageId) || null;
+      }
+      
       let projectPackage: ProjectPackage = {
-        Id: p.attributes?.getNamedItem("Include").value,
+        Id: packageId,
         Version: version,
       };
       project.Packages.push(projectPackage);

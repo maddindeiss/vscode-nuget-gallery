@@ -1,4 +1,4 @@
-type UpdateType = "INSTALL" | "UNINSTALL";
+type UpdateType = "INSTALL" | "UNINSTALL" | "UPDATE";
 
 type UpdateProjectRequest = {
   ProjectPath: string;
