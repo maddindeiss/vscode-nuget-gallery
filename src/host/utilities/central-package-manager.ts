@@ -30,16 +30,18 @@ export default class CentralPackageManager {
 
   /**
    * Check if Central Package Management is enabled for a project
+   * @param projectPath Path to the project file
+   * @param propsPath Optional path to Directory.Packages.props file (to avoid redundant lookups)
    */
-  static IsCentralPackageManagementEnabled(projectPath: string): boolean {
-    const propsPath = this.FindDirectoryPackagesProps(projectPath);
-    if (!propsPath) {
+  static IsCentralPackageManagementEnabled(projectPath: string, propsPath?: string | null): boolean {
+    const actualPropsPath = propsPath !== undefined ? propsPath : this.FindDirectoryPackagesProps(projectPath);
+    if (!actualPropsPath) {
       return false;
     }
 
     try {
-      const content = fs.readFileSync(propsPath, "utf8");
-      const document = new DOMParser().parseFromString(content);
+      const content = fs.readFileSync(actualPropsPath, "utf8");
+      const document = new DOMParser().parseFromString(content, "text/xml");
       
       // Check if ManagePackageVersionsCentrally is set to true
       const manageCentrallyNode = xpath.select(
@@ -62,7 +64,7 @@ export default class CentralPackageManager {
     
     try {
       const content = fs.readFileSync(propsPath, "utf8");
-      const document = new DOMParser().parseFromString(content);
+      const document = new DOMParser().parseFromString(content, "text/xml");
       
       const packageVersions = xpath.select(
         "//ItemGroup/PackageVersion",
@@ -77,7 +79,7 @@ export default class CentralPackageManager {
           version = xpath.select("string(Version)", node) as string;
         }
         
-        if (include && version) {
+        if (include && version && version.trim() !== "") {
           versions.set(include, version);
         }
       });

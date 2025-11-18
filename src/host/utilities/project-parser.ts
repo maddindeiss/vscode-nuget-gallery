@@ -18,12 +18,15 @@ export default class ProjectParser {
     };
 
     // Check if Central Package Management is enabled
-    const isCpmEnabled = CentralPackageManager.IsCentralPackageManagementEnabled(projectPath);
-    const propsPath = isCpmEnabled ? CentralPackageManager.FindDirectoryPackagesProps(projectPath) : null;
+    const propsPath = CentralPackageManager.FindDirectoryPackagesProps(projectPath);
+    const isCpmEnabled = propsPath !== null && CentralPackageManager.IsCentralPackageManagementEnabled(projectPath, propsPath);
     const centralVersions = propsPath ? CentralPackageManager.ParsePackageVersions(propsPath) : null;
 
     (packagesReferences || []).forEach((p: any) => {
-      const packageId = p.attributes?.getNamedItem("Include").value;
+      const packageId = p.attributes?.getNamedItem("Include")?.value;
+      if (!packageId) {
+        return; // Skip packages without an Include attribute
+      }
       let version = p.attributes?.getNamedItem("Version");
       if (version) {
         version = version.value;
@@ -36,7 +39,8 @@ export default class ProjectParser {
       
       // If version is not in csproj but CPM is enabled, get it from Directory.Packages.props
       if (!version && centralVersions && packageId) {
-        version = centralVersions.get(packageId) || null;
+        const centralVersion = centralVersions.get(packageId);
+        version = (centralVersion && centralVersion.trim() !== "") ? centralVersion : null;
       }
       
       let projectPackage: ProjectPackage = {
